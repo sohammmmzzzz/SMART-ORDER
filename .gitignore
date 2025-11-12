@@ -1,0 +1,6 @@
+
+# Environment variables (NEVER commit these!)
+backend/.env
+frontend/.env.local
+**/.env
+**/.env.local
