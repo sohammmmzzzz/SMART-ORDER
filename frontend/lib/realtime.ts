@@ -1,5 +1,5 @@
 /**
- * Simple polling-based "real-time" updates as alternative to Supabase Realtime
+ * Simple polling-based real-time updates
  * Polls the API at regular intervals to check for new data
  */
 

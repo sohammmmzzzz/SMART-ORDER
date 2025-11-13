@@ -14,7 +14,6 @@ import {
 } from "@/components/ui/dialog"
 import { useAuthStore } from "@/store/authStore"
 import { api } from "@/lib/api"
-import { subscribeToPendingOrders } from "@/lib/supabase"
 import {
   ChevronLeft,
   ChevronRight,
@@ -78,23 +77,11 @@ export default function PantryDashboard() {
     }
 
     fetchOrders()
-    setupRealtimeSubscription()
 
-    // Poll for updates every 5 seconds as backup
+    // Poll for updates every 5 seconds
     const interval = setInterval(fetchOrders, 5000)
     return () => clearInterval(interval)
   }, [isAuthenticated, user, router])
-
-  const setupRealtimeSubscription = () => {
-    const channel = subscribeToPendingOrders((payload) => {
-      console.log("Realtime update:", payload)
-      fetchOrders()
-    })
-
-    return () => {
-      channel.unsubscribe()
-    }
-  }
 
   const fetchOrders = async () => {
     try {
