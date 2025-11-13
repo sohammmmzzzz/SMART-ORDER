@@ -5,6 +5,9 @@ This script creates the database, tables, and seeds initial data using Python
 """
 
 import sys
+import hashlib
+import secrets
+import base64
 import psycopg2
 from psycopg2 import sql
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
@@ -15,6 +18,34 @@ DB_USER = "postgres"
 DB_PASSWORD = "postgres"  # Change this to your PostgreSQL password
 DB_HOST = "localhost"
 DB_PORT = "5432"
+
+
+def get_password_hash(password: str) -> str:
+    """
+    Generate password hash using PBKDF2-HMAC-SHA256
+
+    Returns hash in format: algorithm$iterations$salt$hash
+    """
+    # Generate a random salt
+    salt = secrets.token_bytes(32)
+
+    # Number of iterations (100,000 is recommended minimum)
+    iterations = 100000
+
+    # Hash the password
+    hash_bytes = hashlib.pbkdf2_hmac(
+        'sha256',
+        password.encode('utf-8'),
+        salt,
+        iterations
+    )
+
+    # Encode to base64 for storage
+    salt_b64 = base64.b64encode(salt).decode('utf-8')
+    hash_b64 = base64.b64encode(hash_bytes).decode('utf-8')
+
+    # Return in storable format
+    return f'pbkdf2_sha256${iterations}${salt_b64}${hash_b64}'
 
 
 def connect_to_postgres():
@@ -289,8 +320,8 @@ def seed_data():
         print(f"  ✓ Inserted {len(menu_items)} menu items")
 
         # Insert default users
-        # Password hash for "password123"
-        password_hash = "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYzpLaEAB7K"
+        # Generate password hash for "password123" using PBKDF2
+        password_hash = get_password_hash("password123")
 
         users = [
             ('admin', password_hash, 'admin'),

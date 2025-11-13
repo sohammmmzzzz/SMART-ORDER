@@ -138,8 +138,12 @@ INSERT INTO menu_items (category, name, available, image_url) VALUES
 ON CONFLICT DO NOTHING;
 
 -- Insert sample users
--- Default password for all: "password123" (hashed with bcrypt)
--- Password hash: $2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYzpLaEAB7K
+-- IMPORTANT: This SQL file uses old bcrypt hashes for backward compatibility.
+-- For NEW installations, please use migrate.py instead which generates proper PBKDF2 hashes.
+-- Default password for all: "password123"
+--
+-- Note: These bcrypt hashes will NOT work with the new PBKDF2 authentication.
+-- If you run this SQL script, you'll need to manually update passwords or use migrate.py.
 INSERT INTO users (username, password_hash, role) VALUES
     ('admin', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYzpLaEAB7K', 'admin'),
     ('pantry1', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYzpLaEAB7K', 'pantry'),

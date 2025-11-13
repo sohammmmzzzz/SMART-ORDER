@@ -1,7 +1,9 @@
 from datetime import datetime, timedelta
 from typing import Optional
+import hashlib
+import secrets
+import base64
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from models import UserRole
@@ -10,21 +12,74 @@ from config import get_settings
 
 settings = get_settings()
 
-# Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 # JWT token bearer
 security = HTTPBearer()
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a password against its hash"""
-    return pwd_context.verify(plain_password, hashed_password)
+    """
+    Verify a password against its hash using PBKDF2-HMAC-SHA256
+
+    Hash format: algorithm$iterations$salt$hash
+    Example: pbkdf2_sha256$100000$base64salt$base64hash
+    """
+    try:
+        # Parse the stored hash
+        parts = hashed_password.split('$')
+        if len(parts) != 4:
+            return False
+
+        algorithm, iterations, salt_b64, stored_hash = parts
+
+        if algorithm != 'pbkdf2_sha256':
+            return False
+
+        # Decode salt from base64
+        salt = base64.b64decode(salt_b64)
+
+        # Hash the plain password with the same salt and iterations
+        computed_hash = hashlib.pbkdf2_hmac(
+            'sha256',
+            plain_password.encode('utf-8'),
+            salt,
+            int(iterations)
+        )
+
+        # Compare with stored hash
+        stored_hash_bytes = base64.b64decode(stored_hash)
+        return secrets.compare_digest(computed_hash, stored_hash_bytes)
+
+    except Exception as e:
+        print(f"Password verification error: {e}")
+        return False
 
 
 def get_password_hash(password: str) -> str:
-    """Generate password hash"""
-    return pwd_context.hash(password)
+    """
+    Generate password hash using PBKDF2-HMAC-SHA256
+
+    Returns hash in format: algorithm$iterations$salt$hash
+    """
+    # Generate a random salt
+    salt = secrets.token_bytes(32)
+
+    # Number of iterations (100,000 is recommended minimum)
+    iterations = 100000
+
+    # Hash the password
+    hash_bytes = hashlib.pbkdf2_hmac(
+        'sha256',
+        password.encode('utf-8'),
+        salt,
+        iterations
+    )
+
+    # Encode to base64 for storage
+    salt_b64 = base64.b64encode(salt).decode('utf-8')
+    hash_b64 = base64.b64encode(hash_bytes).decode('utf-8')
+
+    # Return in storable format
+    return f'pbkdf2_sha256${iterations}${salt_b64}${hash_b64}'
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
@@ -80,13 +135,13 @@ async def get_current_user(
     # Fetch user from database
     try:
         response = db.table("users").select("*").eq("id", user_id).execute()
-        if not response.data:
+        if not response["data"]:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="User not found"
             )
 
-        user = response.data[0]
+        user = response["data"][0]
         return user
 
     except Exception as e:
