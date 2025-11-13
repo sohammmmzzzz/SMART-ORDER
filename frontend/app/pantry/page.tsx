@@ -41,6 +41,13 @@ interface Order {
   updated_at: string
 }
 
+// Background images for pantry dashboard
+const BACKGROUND_IMAGES = [
+  "https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=1920&q=80", // Kitchen workspace
+  "https://images.unsplash.com/photo-1600565193348-f74bd3c7ccdf?w=1920&q=80", // Modern kitchen
+  "https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=1920&q=80", // Commercial kitchen
+]
+
 export default function PantryDashboard() {
   const router = useRouter()
   const { user, isAuthenticated, logout } = useAuthStore()
@@ -50,6 +57,15 @@ export default function PantryDashboard() {
   const [showHistory, setShowHistory] = useState(false)
   const [orderHistory, setOrderHistory] = useState<Order[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [bgIndex, setBgIndex] = useState(0)
+
+  // Change background every 8 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setBgIndex((prev) => (prev + 1) % BACKGROUND_IMAGES.length)
+    }, 8000)
+    return () => clearInterval(interval)
+  }, [])
 
   useEffect(() => {
     if (!isAuthenticated || (user?.role !== "pantry" && user?.role !== "admin")) {
@@ -59,14 +75,16 @@ export default function PantryDashboard() {
 
     fetchOrders()
 
-    const interval = setInterval(fetchOrders, 5000)
+    // Poll every 2 seconds for near real-time updates
+    const interval = setInterval(fetchOrders, 2000)
     return () => clearInterval(interval)
   }, [isAuthenticated, user, router])
 
   const fetchOrders = async () => {
     try {
       const data = await api.getPendingOrders()
-      setOrders(data)
+      // Force state update by creating new array reference
+      setOrders([...data])
       setIsLoading(false)
     } catch (error) {
       console.error("Error fetching orders:", error)
@@ -125,8 +143,9 @@ export default function PantryDashboard() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
+      <div className="min-h-screen relative overflow-hidden flex items-center justify-center">
+        <div className="absolute inset-0 bg-gradient-to-br from-green-900/40 via-teal-900/30 to-blue-900/40 z-0" />
+        <div className="text-center relative z-10">
           <Coffee className="w-12 h-12 text-gray-400 mx-auto mb-4 animate-pulse" />
           <p className="text-lg text-gray-600">Loading orders...</p>
         </div>
@@ -135,9 +154,31 @@ export default function PantryDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen relative overflow-hidden">
+      {/* Animated Background */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={bgIndex}
+          initial={{ opacity: 0, scale: 1.05 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 2, ease: "easeInOut" }}
+          className="fixed inset-0 z-0"
+          style={{
+            backgroundImage: `url('${BACKGROUND_IMAGES[bgIndex]}')`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+          }}
+        />
+      </AnimatePresence>
+
+      {/* Gradient Overlay */}
+      <div className="fixed inset-0 bg-gradient-to-br from-green-900/60 via-teal-900/50 to-blue-900/60 z-10" />
+
+      {/* Content wrapper */}
+      <div className="relative z-20 min-h-screen">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200">
+      <header className="bg-white/95 backdrop-blur-lg border-b border-white/20 shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-3">
@@ -173,7 +214,7 @@ export default function PantryDashboard() {
               exit={{ opacity: 0 }}
               className="text-center py-20"
             >
-              <div className="bg-white p-12 rounded-lg border border-gray-200 shadow-sm inline-block">
+              <div className="bg-white/95 backdrop-blur-lg p-12 rounded-lg border border-white/20 shadow-2xl inline-block">
                 <Package className="h-16 w-16 mx-auto text-gray-400 mb-4" />
                 <h2 className="text-2xl font-semibold text-gray-900 mb-2">No Pending Orders</h2>
                 <p className="text-gray-600">
@@ -191,7 +232,7 @@ export default function PantryDashboard() {
               className="space-y-6"
             >
               {/* Order counter */}
-              <div className="text-center bg-white p-4 rounded-lg border border-gray-200 inline-block">
+              <div className="text-center bg-white/95 backdrop-blur-lg p-4 rounded-lg border border-white/20 shadow-lg inline-block">
                 <p className="text-base font-semibold text-gray-900">
                   Order {currentIndex + 1} of {orders.length}
                 </p>
@@ -211,7 +252,7 @@ export default function PantryDashboard() {
                   exit={{ opacity: 0, x: -50 }}
                   transition={{ duration: 0.2 }}
                 >
-                  <Card className="bg-white border border-gray-200 shadow-sm">
+                  <Card className="bg-white/95 backdrop-blur-lg border border-white/20 shadow-2xl">
                     <CardContent className="p-6 space-y-4">
                       {/* Header */}
                       <div className="flex justify-between items-start">
@@ -395,6 +436,7 @@ export default function PantryDashboard() {
           </div>
         </DialogContent>
       </Dialog>
+      </div>
     </div>
   )
 }

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { motion } from "framer-motion"
+import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
@@ -10,13 +10,29 @@ import { useAuthStore } from "@/store/authStore"
 import { api } from "@/lib/api"
 import { Coffee, Loader2 } from "lucide-react"
 
+// Animated background images
+const BACKGROUND_IMAGES = [
+  "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=1920&q=80", // Coffee shop
+  "https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=1920&q=80", // Coffee cup
+  "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=1920&q=80", // Coffee beans
+]
+
 export default function LoginPage() {
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
+  const [bgIndex, setBgIndex] = useState(0)
   const router = useRouter()
   const { login, isAuthenticated, user } = useAuthStore()
+
+  // Change background every 5 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setBgIndex((prev) => (prev + 1) % BACKGROUND_IMAGES.length)
+    }, 5000)
+    return () => clearInterval(interval)
+  }, [])
 
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -56,14 +72,57 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+    <div className="min-h-screen relative overflow-hidden flex items-center justify-center px-4">
+      {/* Animated Background */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={bgIndex}
+          initial={{ opacity: 0, scale: 1.1 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 1.5, ease: "easeInOut" }}
+          className="absolute inset-0 z-0"
+          style={{
+            backgroundImage: `url('${BACKGROUND_IMAGES[bgIndex]}')`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+          }}
+        />
+      </AnimatePresence>
+
+      {/* Gradient Overlay */}
+      <div className="absolute inset-0 bg-gradient-to-br from-purple-900/70 via-blue-900/60 to-pink-900/70 z-10" />
+
+      {/* Floating Particles */}
+      <div className="absolute inset-0 z-10">
+        {[...Array(20)].map((_, i) => (
+          <motion.div
+            key={i}
+            className="absolute w-2 h-2 bg-white/30 rounded-full"
+            initial={{
+              x: Math.random() * window.innerWidth,
+              y: Math.random() * window.innerHeight,
+            }}
+            animate={{
+              y: [null, Math.random() * window.innerHeight],
+              x: [null, Math.random() * window.innerWidth],
+            }}
+            transition={{
+              duration: Math.random() * 10 + 20,
+              repeat: Infinity,
+              ease: "linear",
+            }}
+          />
+        ))}
+      </div>
+
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="w-full max-w-md"
+        className="w-full max-w-md relative z-20"
       >
-        <Card className="bg-white border border-gray-200 shadow-sm p-8">
+        <Card className="bg-white/95 backdrop-blur-lg border border-white/20 shadow-2xl p-8">
           {/* Logo and Title */}
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-12 h-12 rounded-lg bg-gray-900 mb-4">

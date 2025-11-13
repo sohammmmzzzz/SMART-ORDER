@@ -57,6 +57,13 @@ interface Order {
 
 const COLORS = ["#f59e0b", "#10b981", "#ef4444"]
 
+// Background images for admin dashboard
+const BACKGROUND_IMAGES = [
+  "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=1920&q=80", // Analytics charts
+  "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=1920&q=80", // Data visualization
+  "https://images.unsplash.com/photo-1551434678-e076c223a692?w=1920&q=80", // Business graphs
+]
+
 export default function AdminDashboard() {
   const router = useRouter()
   const { user, isAuthenticated, logout } = useAuthStore()
@@ -66,6 +73,15 @@ export default function AdminDashboard() {
   const [isLoading, setIsLoading] = useState(true)
   const [locationFilter, setLocationFilter] = useState("")
   const [statusFilter, setStatusFilter] = useState("")
+  const [bgIndex, setBgIndex] = useState(0)
+
+  // Change background every 10 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setBgIndex((prev) => (prev + 1) % BACKGROUND_IMAGES.length)
+    }, 10000)
+    return () => clearInterval(interval)
+  }, [])
 
   useEffect(() => {
     if (!isAuthenticated || user?.role !== "admin") {
@@ -75,6 +91,7 @@ export default function AdminDashboard() {
 
     fetchData()
 
+    // Poll every 10 minutes (600000ms) for dashboard updates
     const interval = setInterval(fetchData, 600000)
     return () => clearInterval(interval)
   }, [isAuthenticated, user, router])
@@ -87,9 +104,10 @@ export default function AdminDashboard() {
         api.getAllUsers(),
       ])
 
-      setAnalytics(analyticsData)
-      setOrders(ordersData)
-      setUsers(usersData)
+      // Force state updates with new array/object references
+      setAnalytics({ ...analyticsData })
+      setOrders([...ordersData])
+      setUsers([...usersData])
       setIsLoading(false)
     } catch (error) {
       console.error("Error fetching data:", error)
@@ -110,8 +128,9 @@ export default function AdminDashboard() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
+      <div className="min-h-screen relative overflow-hidden flex items-center justify-center">
+        <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/40 via-purple-900/30 to-pink-900/40 z-0" />
+        <div className="text-center relative z-10">
           <BarChart3 className="w-12 h-12 text-gray-400 mx-auto mb-4 animate-pulse" />
           <p className="text-lg text-gray-600">Loading dashboard...</p>
         </div>
@@ -120,9 +139,31 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen relative overflow-hidden">
+      {/* Animated Background */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={bgIndex}
+          initial={{ opacity: 0, scale: 1.05 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 2, ease: "easeInOut" }}
+          className="fixed inset-0 z-0"
+          style={{
+            backgroundImage: `url('${BACKGROUND_IMAGES[bgIndex]}')`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+          }}
+        />
+      </AnimatePresence>
+
+      {/* Gradient Overlay */}
+      <div className="fixed inset-0 bg-gradient-to-br from-indigo-900/70 via-purple-900/60 to-pink-900/70 z-10" />
+
+      {/* Content wrapper */}
+      <div className="relative z-20 min-h-screen">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200">
+      <header className="bg-white/95 backdrop-blur-lg border-b border-white/20 shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-3">
@@ -182,7 +223,7 @@ export default function AdminDashboard() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
             >
-              <Card className="bg-white border border-gray-200 shadow-sm">
+              <Card className="bg-white/95 backdrop-blur-lg border border-white/20 shadow-2xl">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium text-gray-700">
                     {stat.title}
@@ -203,7 +244,7 @@ export default function AdminDashboard() {
 
         {/* Average completion time */}
         {analytics?.avg_completion_time_minutes && (
-          <Card className="bg-white border border-gray-200 shadow-sm">
+          <Card className="bg-white/95 backdrop-blur-lg border border-white/20 shadow-2xl">
             <CardHeader>
               <CardTitle className="text-gray-900 flex items-center gap-2">
                 <TrendingUp className="w-5 h-5" />
@@ -221,7 +262,7 @@ export default function AdminDashboard() {
         {/* Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Location distribution */}
-          <Card className="bg-white border border-gray-200 shadow-sm">
+          <Card className="bg-white/95 backdrop-blur-lg border border-white/20 shadow-2xl">
             <CardHeader>
               <CardTitle className="text-gray-900 flex items-center gap-2">
                 <MapPin className="w-5 h-5" />
@@ -259,7 +300,7 @@ export default function AdminDashboard() {
           </Card>
 
           {/* Hourly distribution */}
-          <Card className="bg-white border border-gray-200 shadow-sm">
+          <Card className="bg-white/95 backdrop-blur-lg border border-white/20 shadow-2xl">
             <CardHeader>
               <CardTitle className="text-gray-900 flex items-center gap-2">
                 <Clock className="w-5 h-5" />
@@ -292,7 +333,7 @@ export default function AdminDashboard() {
 
         {/* Order status pie chart */}
         {analytics && (
-          <Card className="bg-white border border-gray-200 shadow-sm">
+          <Card className="bg-white/95 backdrop-blur-lg border border-white/20 shadow-2xl">
             <CardHeader>
               <CardTitle className="text-gray-900">Order Status Distribution</CardTitle>
             </CardHeader>
@@ -452,6 +493,7 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
       </main>
+      </div>
     </div>
   )
 }
