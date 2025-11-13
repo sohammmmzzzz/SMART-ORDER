@@ -49,7 +49,7 @@ export const useOrderStore = create<OrderState>((set, get) => ({
 
   setLocation: (location) => set({ location }),
 
-  clearOrder: () => set({ selectedItems: [], location: null }),
+  clearOrder: () => set({ selectedItems: [] }),
 
   getTotalItems: () => {
     const state = get()
