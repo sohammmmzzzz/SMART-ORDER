@@ -5,8 +5,8 @@ from functools import lru_cache
 class Settings(BaseSettings):
     """Application settings loaded from environment variables"""
 
-    # Database
-    database_url: str
+    # Database (SQLite - no URL needed, uses local file)
+    database_url: str = "sqlite:///smart_pantry.db"  # Optional, not used with SQLite
 
     # JWT
     jwt_secret_key: str

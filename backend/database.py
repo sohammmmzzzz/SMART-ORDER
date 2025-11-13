@@ -1,36 +1,25 @@
-import psycopg2
-from psycopg2.extras import RealDictCursor, Json
-from psycopg2.pool import SimpleConnectionPool
+import sqlite3
 from contextlib import contextmanager
-from config import get_settings
 from typing import Optional, List, Dict, Any
 import json
-
-settings = get_settings()
-
+import uuid
 
 class Database:
-    """Database connection manager for PostgreSQL"""
+    """Database connection manager for SQLite"""
 
-    _pool: Optional[SimpleConnectionPool] = None
+    _db_path: str = "smart_pantry.db"
 
     @classmethod
-    def get_pool(cls) -> SimpleConnectionPool:
-        """Get or create connection pool"""
-        if cls._pool is None:
-            cls._pool = SimpleConnectionPool(
-                1,  # min connections
-                10,  # max connections
-                settings.database_url
-            )
-        return cls._pool
+    def set_db_path(cls, path: str):
+        """Set the database file path"""
+        cls._db_path = path
 
     @classmethod
     @contextmanager
     def get_connection(cls):
-        """Get a database connection from the pool"""
-        pool = cls.get_pool()
-        conn = pool.getconn()
+        """Get a database connection"""
+        conn = sqlite3.connect(cls._db_path)
+        conn.row_factory = sqlite3.Row  # Return rows as dictionaries
         try:
             yield conn
             conn.commit()
@@ -38,7 +27,7 @@ class Database:
             conn.rollback()
             raise
         finally:
-            pool.putconn(conn)
+            conn.close()
 
     @classmethod
     def execute_query(
@@ -50,24 +39,17 @@ class Database:
     ) -> Optional[Any]:
         """Execute a SQL query and return results"""
         with cls.get_connection() as conn:
-            with conn.cursor(cursor_factory=RealDictCursor) as cursor:
-                cursor.execute(query, params or ())
+            cursor = conn.cursor()
+            cursor.execute(query, params or ())
 
-                if fetch_one:
-                    result = cursor.fetchone()
-                    return dict(result) if result else None
-                elif fetch_all:
-                    results = cursor.fetchall()
-                    return [dict(row) for row in results]
-                else:
-                    return cursor.rowcount
-
-    @classmethod
-    def close_pool(cls):
-        """Close all connections in the pool"""
-        if cls._pool:
-            cls._pool.closeall()
-            cls._pool = None
+            if fetch_one:
+                result = cursor.fetchone()
+                return dict(result) if result else None
+            elif fetch_all:
+                results = cursor.fetchall()
+                return [dict(row) for row in results]
+            else:
+                return cursor.rowcount
 
 
 # Table helper class for query building
@@ -85,42 +67,48 @@ class Table:
 
     def select(self, columns: str = "*"):
         """Set columns to select"""
-        self._select_cols = columns
+        # SQLite doesn't support PostgreSQL-style joins in select
+        # Extract just the columns, ignore the join syntax
+        if "!" in columns:
+            # For now, just select everything and we'll handle joins differently
+            self._select_cols = "*"
+        else:
+            self._select_cols = columns
         return self
 
     def eq(self, column: str, value: Any):
         """Add equality filter"""
-        self._where_clauses.append(f"{column} = %s")
+        self._where_clauses.append(f"{column} = ?")
         self._where_params.append(value)
         return self
 
     def neq(self, column: str, value: Any):
         """Add not equal filter"""
-        self._where_clauses.append(f"{column} != %s")
+        self._where_clauses.append(f"{column} != ?")
         self._where_params.append(value)
         return self
 
     def gt(self, column: str, value: Any):
         """Add greater than filter"""
-        self._where_clauses.append(f"{column} > %s")
+        self._where_clauses.append(f"{column} > ?")
         self._where_params.append(value)
         return self
 
     def gte(self, column: str, value: Any):
         """Add greater than or equal filter"""
-        self._where_clauses.append(f"{column} >= %s")
+        self._where_clauses.append(f"{column} >= ?")
         self._where_params.append(value)
         return self
 
     def lt(self, column: str, value: Any):
         """Add less than filter"""
-        self._where_clauses.append(f"{column} < %s")
+        self._where_clauses.append(f"{column} < ?")
         self._where_params.append(value)
         return self
 
     def lte(self, column: str, value: Any):
         """Add less than or equal filter"""
-        self._where_clauses.append(f"{column} <= %s")
+        self._where_clauses.append(f"{column} <= ?")
         self._where_params.append(value)
         return self
 
@@ -166,6 +154,16 @@ class Table:
         # Execute query
         data = Database.execute_query(query, tuple(self._where_params), fetch_all=True)
 
+        # Handle JSON columns - parse them back to dicts/lists
+        if data:
+            for row in data:
+                # Parse JSON columns if they exist
+                if 'items' in row and isinstance(row['items'], str):
+                    try:
+                        row['items'] = json.loads(row['items'])
+                    except:
+                        pass
+
         return {"data": data or [], "count": len(data) if data else 0}
 
     def insert(self, data: Dict[str, Any]) -> Dict[str, Any]:
@@ -173,34 +171,56 @@ class Table:
         columns = list(data.keys())
         values = list(data.values())
 
-        # Convert dict/list to JSON for JSONB columns
+        # Convert dict/list to JSON string for JSON columns
         values = [
-            Json(v) if isinstance(v, (dict, list)) else v
+            json.dumps(v) if isinstance(v, (dict, list)) else v
             for v in values
         ]
 
-        placeholders = ", ".join(["%s"] * len(values))
+        # Add UUID if not provided
+        if 'id' not in columns:
+            columns.insert(0, 'id')
+            values.insert(0, str(uuid.uuid4()))
+
+        placeholders = ", ".join(["?"] * len(values))
         columns_str = ", ".join(columns)
 
         query = f"""
             INSERT INTO {self.table_name} ({columns_str})
             VALUES ({placeholders})
-            RETURNING *
         """
 
-        result = Database.execute_query(query, tuple(values), fetch_one=True)
-        return {"data": [result] if result else []}
+        with Database.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(query, tuple(values))
 
-    def update(self, data: Dict[str, Any]) -> Dict[str, Any]:
+            # Get the inserted row
+            last_id = cursor.lastrowid
+            cursor.execute(f"SELECT * FROM {self.table_name} WHERE rowid = ?", (last_id,))
+            result = cursor.fetchone()
+
+            if result:
+                result_dict = dict(result)
+                # Parse JSON columns
+                if 'items' in result_dict and isinstance(result_dict['items'], str):
+                    try:
+                        result_dict['items'] = json.loads(result_dict['items'])
+                    except:
+                        pass
+                return {"data": [result_dict]}
+
+        return {"data": []}
+
+    def update(self, data: Dict[str, Any]):
         """Update records"""
         set_clauses = []
         params = []
 
         for key, value in data.items():
-            set_clauses.append(f"{key} = %s")
-            # Convert dict/list to JSON for JSONB columns
+            set_clauses.append(f"{key} = ?")
+            # Convert dict/list to JSON string
             if isinstance(value, (dict, list)):
-                params.append(Json(value))
+                params.append(json.dumps(value))
             else:
                 params.append(value)
 
@@ -210,10 +230,30 @@ class Table:
             query += " WHERE " + " AND ".join(self._where_clauses)
             params.extend(self._where_params)
 
-        query += " RETURNING *"
+        with Database.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(query, tuple(params))
 
-        result = Database.execute_query(query, tuple(params), fetch_all=True)
-        return {"data": result or []}
+            # Get updated rows
+            if self._where_clauses:
+                select_query = f"SELECT * FROM {self.table_name} WHERE " + " AND ".join(self._where_clauses)
+                cursor.execute(select_query, tuple(self._where_params))
+            else:
+                cursor.execute(f"SELECT * FROM {self.table_name}")
+
+            results = cursor.fetchall()
+            result_list = []
+            for row in results:
+                row_dict = dict(row)
+                # Parse JSON columns
+                if 'items' in row_dict and isinstance(row_dict['items'], str):
+                    try:
+                        row_dict['items'] = json.loads(row_dict['items'])
+                    except:
+                        pass
+                result_list.append(row_dict)
+
+            return {"data": result_list}
 
     def delete(self) -> Dict[str, Any]:
         """Delete records"""
@@ -222,10 +262,23 @@ class Table:
         if self._where_clauses:
             query += " WHERE " + " AND ".join(self._where_clauses)
 
-        query += " RETURNING *"
+        with Database.get_connection() as conn:
+            cursor = conn.cursor()
 
-        result = Database.execute_query(query, tuple(self._where_params), fetch_all=True)
-        return {"data": result or []}
+            # Get rows before deleting
+            if self._where_clauses:
+                select_query = f"SELECT * FROM {self.table_name} WHERE " + " AND ".join(self._where_clauses)
+                cursor.execute(select_query, tuple(self._where_params))
+            else:
+                cursor.execute(f"SELECT * FROM {self.table_name}")
+
+            results = cursor.fetchall()
+            result_list = [dict(row) for row in results]
+
+            # Now delete
+            cursor.execute(query, tuple(self._where_params))
+
+            return {"data": result_list}
 
 
 def get_db():

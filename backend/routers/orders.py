@@ -76,7 +76,7 @@ async def get_orders(
     - Pantry/Admin: Get all orders
     """
     try:
-        query = db.table("orders").select("*, users!orders_user_id_fkey(username)")
+        query = db.table("orders").select("*")
 
         # Filter by user_id for regular users
         if current_user["role"] == UserRole.USER.value:
@@ -87,10 +87,17 @@ async def get_orders(
 
         orders = []
         for order in response["data"]:
+            # Fetch username separately for SQLite
+            username = None
+            if order.get("user_id"):
+                user_response = db.table("users").select("username").eq("id", order["user_id"]).execute()
+                if user_response["data"]:
+                    username = user_response["data"][0]["username"]
+
             orders.append(OrderResponse(
                 id=order["id"],
                 user_id=order["user_id"],
-                username=order.get("users", {}).get("username") if order.get("users") else None,
+                username=username,
                 items=order["items"],
                 location=order["location"],
                 status=order["status"],
@@ -117,16 +124,21 @@ async def get_pending_orders(
     Get all pending orders (pantry/admin only)
     """
     try:
-        response = db.table("orders").select(
-            "*, users!orders_user_id_fkey(username)"
-        ).eq("status", OrderStatus.PENDING.value).order("created_at").execute()
+        response = db.table("orders").select("*").eq("status", OrderStatus.PENDING.value).order("created_at").execute()
 
         orders = []
         for order in response["data"]:
+            # Fetch username separately for SQLite
+            username = None
+            if order.get("user_id"):
+                user_response = db.table("users").select("username").eq("id", order["user_id"]).execute()
+                if user_response["data"]:
+                    username = user_response["data"][0]["username"]
+
             orders.append(OrderResponse(
                 id=order["id"],
                 user_id=order["user_id"],
-                username=order.get("users", {}).get("username") if order.get("users") else None,
+                username=username,
                 items=order["items"],
                 location=order["location"],
                 status=order["status"],
@@ -211,7 +223,7 @@ async def get_order_history(
     - Pantry/Admin: Get all order history
     """
     try:
-        query = db.table("orders").select("*, users!orders_user_id_fkey(username)")
+        query = db.table("orders").select("*")
 
         # Filter by user_id for regular users
         if current_user["role"] == UserRole.USER.value:
@@ -222,10 +234,17 @@ async def get_order_history(
 
         orders = []
         for order in response["data"]:
+            # Fetch username separately for SQLite
+            username = None
+            if order.get("user_id"):
+                user_response = db.table("users").select("username").eq("id", order["user_id"]).execute()
+                if user_response["data"]:
+                    username = user_response["data"][0]["username"]
+
             orders.append(OrderResponse(
                 id=order["id"],
                 user_id=order["user_id"],
-                username=order.get("users", {}).get("username") if order.get("users") else None,
+                username=username,
                 items=order["items"],
                 location=order["location"],
                 status=order["status"],
