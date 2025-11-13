@@ -135,13 +135,13 @@ def init_database():
             # Teas
             ('TEAS', 'Ginger Tea', 'https://images.unsplash.com/photo-1564890369478-c89ca6d9cde9?w=400'),
             ('TEAS', 'Green Tea', 'https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=400'),
-            ('TEAS', 'Masala Tea', 'https://images.unsplash.com/photo-1597318163218-1df6aa03e580?w=400'),
+            ('TEAS', 'Masala Tea', 'https://images.unsplash.com/photo-1563822249366-3effc7c2f9e5?w=400'),  # Indian Masala Chai
 
             # Coffee
             ('COFFEE', 'Cappuccino', 'https://images.unsplash.com/photo-1572442388796-11668a67e53d?w=400'),
             ('COFFEE', 'Latte', 'https://images.unsplash.com/photo-1561882468-9110e03e0f78?w=400'),
             ('COFFEE', 'Espresso', 'https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?w=400'),
-            ('COFFEE', 'Black Coffee', 'https://images.unsplash.com/photo-1505778276668-26b3ff7af103?w=400'),
+            ('COFFEE', 'Black Coffee', 'https://images.unsplash.com/photo-1517487881594-2787fef5ebf7?w=400'),  # Black coffee in cup
         ]
 
         for category, name, image_url in menu_items:

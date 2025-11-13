@@ -52,16 +52,24 @@ export default function UserDashboard() {
     removeItem,
     clearOrder,
     getTotalItems,
+    // Timer states and actions from store
+    orderStatus,
+    countdown,
+    preparationTime,
+    showOrderModal,
+    setOrderStatus,
+    setCountdown,
+    setPreparationTime,
+    setShowOrderModal,
+    decrementCountdown,
+    decrementPreparationTime,
+    resetTimer,
   } = useOrderStore()
 
   const [menuItems, setMenuItems] = useState<MenuItem[]>([])
   const [categories, setCategories] = useState<string[]>([])
   const [showLocationModal, setShowLocationModal] = useState(false)
-  const [showOrderModal, setShowOrderModal] = useState(false)
-  const [countdown, setCountdown] = useState(5)
   const [isOrdering, setIsOrdering] = useState(false)
-  const [orderStatus, setOrderStatus] = useState<"idle" | "confirming" | "preparing" | "completed">("idle")
-  const [preparationTime, setPreparationTime] = useState(900)
   const [bgIndex, setBgIndex] = useState(0)
 
   // Change background every 7 seconds
@@ -120,21 +128,25 @@ export default function UserDashboard() {
     setOrderStatus("confirming")
   }
 
+  // Countdown timer - runs even when modal is closed
   useEffect(() => {
-    if (showOrderModal && orderStatus === "confirming" && countdown > 0) {
-      const timer = setTimeout(() => setCountdown(countdown - 1), 1000)
+    if (orderStatus === "confirming" && countdown > 0) {
+      const timer = setTimeout(() => decrementCountdown(), 1000)
       return () => clearTimeout(timer)
-    } else if (showOrderModal && orderStatus === "confirming" && countdown === 0) {
+    } else if (orderStatus === "confirming" && countdown === 0) {
       confirmOrder()
     }
-  }, [showOrderModal, orderStatus, countdown])
+  }, [orderStatus, countdown])
 
+  // Preparation timer - runs even when modal is closed
   useEffect(() => {
     if (orderStatus === "preparing" && preparationTime > 0) {
-      const timer = setTimeout(() => setPreparationTime(preparationTime - 1), 1000)
+      const timer = setTimeout(() => decrementPreparationTime(), 1000)
       return () => clearTimeout(timer)
     } else if (orderStatus === "preparing" && preparationTime === 0) {
       setOrderStatus("completed")
+      // Auto-reset after completion
+      setTimeout(() => resetTimer(), 3000)
     }
   }, [orderStatus, preparationTime])
 
@@ -157,8 +169,7 @@ export default function UserDashboard() {
 
   const cancelOrder = () => {
     setShowOrderModal(false)
-    setOrderStatus("idle")
-    setCountdown(5)
+    resetTimer()
   }
 
   const handleLogout = () => {
@@ -457,6 +468,76 @@ export default function UserDashboard() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Floating timer notification - shows when order is preparing and modal is closed */}
+      <AnimatePresence>
+        {orderStatus === "preparing" && !showOrderModal && (
+          <motion.div
+            initial={{ opacity: 0, y: 100 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 100 }}
+            transition={{ duration: 0.3 }}
+            className="fixed bottom-6 right-6 z-50"
+          >
+            <Card
+              className="bg-white/95 backdrop-blur-lg border border-white/20 shadow-2xl cursor-pointer hover:shadow-3xl transition-shadow"
+              onClick={() => setShowOrderModal(true)}
+            >
+              <CardContent className="p-4">
+                <div className="flex items-center gap-4">
+                  <div className="relative">
+                    <Clock className="h-8 w-8 text-gray-700 animate-pulse" />
+                    <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">Order Preparing</p>
+                    <p className="text-xl font-bold text-gray-900 tabular-nums">
+                      {formatTime(preparationTime)}
+                    </p>
+                    <p className="text-xs text-gray-600 mt-0.5">Click to view details</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Floating completion notification - shows when order is completed and modal is closed */}
+      <AnimatePresence>
+        {orderStatus === "completed" && !showOrderModal && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8, y: 100 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.8, y: 100 }}
+            transition={{ duration: 0.4, type: "spring" }}
+            className="fixed bottom-6 right-6 z-50"
+          >
+            <Card
+              className="bg-gradient-to-br from-green-500 to-emerald-600 border-0 shadow-2xl cursor-pointer hover:shadow-3xl transition-shadow"
+              onClick={() => setShowOrderModal(true)}
+            >
+              <CardContent className="p-4">
+                <div className="flex items-center gap-4">
+                  <div className="relative">
+                    <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
+                      <CheckCircle className="h-6 w-6 text-green-600" />
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-white">Order Ready!</p>
+                    <p className="text-xs text-white/90 mt-1 flex items-center gap-1">
+                      <MapPin className="w-3 h-3" />
+                      Pickup at {location}
+                    </p>
+                    <p className="text-xs text-white/80 mt-0.5">Click to view</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+      </AnimatePresence>
       </div>
     </div>
   )

@@ -7,20 +7,41 @@ interface OrderItem {
   quantity: number
 }
 
+type OrderStatus = 'idle' | 'confirming' | 'preparing' | 'completed'
+
 interface OrderState {
   selectedItems: OrderItem[]
   location: string | null
+  // Timer states
+  orderStatus: OrderStatus
+  countdown: number
+  preparationTime: number
+  showOrderModal: boolean
+  // Actions
   addItem: (item: OrderItem) => void
   removeItem: (itemId: string) => void
   updateQuantity: (itemId: string, quantity: number) => void
   setLocation: (location: string) => void
   clearOrder: () => void
   getTotalItems: () => number
+  // Timer actions
+  setOrderStatus: (status: OrderStatus) => void
+  setCountdown: (countdown: number) => void
+  setPreparationTime: (time: number) => void
+  setShowOrderModal: (show: boolean) => void
+  decrementCountdown: () => void
+  decrementPreparationTime: () => void
+  resetTimer: () => void
 }
 
 export const useOrderStore = create<OrderState>((set, get) => ({
   selectedItems: [],
   location: null,
+  // Timer initial states
+  orderStatus: 'idle',
+  countdown: 5,
+  preparationTime: 900,
+  showOrderModal: false,
 
   addItem: (item) =>
     set((state) => {
@@ -55,4 +76,26 @@ export const useOrderStore = create<OrderState>((set, get) => ({
     const state = get()
     return state.selectedItems.reduce((total, item) => total + item.quantity, 0)
   },
+
+  // Timer actions
+  setOrderStatus: (status) => set({ orderStatus: status }),
+
+  setCountdown: (countdown) => set({ countdown }),
+
+  setPreparationTime: (time) => set({ preparationTime: time }),
+
+  setShowOrderModal: (show) => set({ showOrderModal: show }),
+
+  decrementCountdown: () => set((state) => ({ countdown: Math.max(0, state.countdown - 1) })),
+
+  decrementPreparationTime: () => set((state) => ({
+    preparationTime: Math.max(0, state.preparationTime - 1)
+  })),
+
+  resetTimer: () => set({
+    orderStatus: 'idle',
+    countdown: 5,
+    preparationTime: 900,
+    showOrderModal: false
+  }),
 }))
