@@ -5,18 +5,13 @@ from functools import lru_cache
 class Settings(BaseSettings):
     """Application settings loaded from environment variables"""
 
-    # Supabase
-    supabase_url: str
-    supabase_anon_key: str
-    supabase_service_key: str
+    # Database
+    database_url: str
 
     # JWT
     jwt_secret_key: str
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 1440  # 24 hours
-
-    # Database
-    database_url: str
 
     # Environment
     environment: str = "development"
