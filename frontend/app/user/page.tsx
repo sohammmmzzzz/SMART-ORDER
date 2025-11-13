@@ -71,6 +71,7 @@ export default function UserDashboard() {
   const [showLocationModal, setShowLocationModal] = useState(false)
   const [isOrdering, setIsOrdering] = useState(false)
   const [bgIndex, setBgIndex] = useState(0)
+  const [currentOrderId, setCurrentOrderId] = useState<string | null>(null)
 
   // Change background every 7 seconds
   useEffect(() => {
@@ -91,7 +92,16 @@ export default function UserDashboard() {
     }
 
     fetchMenuItems()
-  }, [isAuthenticated, user, location, router])
+
+    // Poll for order status updates every 3 seconds when order is preparing
+    const pollInterval = setInterval(() => {
+      if (orderStatus === "preparing") {
+        checkOrderStatus()
+      }
+    }, 3000)
+
+    return () => clearInterval(pollInterval)
+  }, [isAuthenticated, user, location, router, orderStatus])
 
   const fetchMenuItems = async () => {
     try {
@@ -100,6 +110,29 @@ export default function UserDashboard() {
       setCategories(data.categories)
     } catch (error) {
       console.error("Error fetching menu items:", error)
+    }
+  }
+
+  const checkOrderStatus = async () => {
+    if (!currentOrderId) return
+
+    try {
+      const orders = await api.getOrders()
+      const currentOrder = orders.find((o: any) => o.id === currentOrderId)
+
+      if (currentOrder) {
+        // If pantry marked the order as completed, update our local state
+        if (currentOrder.status === "completed" && orderStatus === "preparing") {
+          setOrderStatus("completed")
+          // Reset after 3 seconds
+          setTimeout(() => {
+            resetTimer()
+            setCurrentOrderId(null)
+          }, 3000)
+        }
+      }
+    } catch (error) {
+      console.error("Error checking order status:", error)
     }
   }
 
@@ -153,7 +186,8 @@ export default function UserDashboard() {
   const confirmOrder = async () => {
     setIsOrdering(true)
     try {
-      await api.createOrder(selectedItems, location!)
+      const order = await api.createOrder(selectedItems, location!)
+      setCurrentOrderId(order.id) // Store order ID for status polling
       setOrderStatus("preparing")
       setPreparationTime(900)
       clearOrder()
@@ -170,6 +204,7 @@ export default function UserDashboard() {
   const cancelOrder = () => {
     setShowOrderModal(false)
     resetTimer()
+    setCurrentOrderId(null)
   }
 
   const handleLogout = () => {

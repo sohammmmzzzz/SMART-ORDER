@@ -174,8 +174,8 @@ async def update_order_status(
         if update_data.status == OrderStatus.COMPLETED:
             update_fields["completed_at"] = datetime.utcnow().isoformat()
 
-        # Update order
-        response = db.table("orders").update(update_fields).eq("id", order_id).execute()
+        # Update order - correct order: eq() BEFORE update()
+        response = db.table("orders").eq("id", order_id).update(update_fields)
 
         if not response["data"]:
             raise HTTPException(
