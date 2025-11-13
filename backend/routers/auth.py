@@ -18,13 +18,13 @@ async def login(login_data: LoginRequest, db=Depends(get_db)):
         # Fetch user from database
         response = db.table("users").select("*").eq("username", login_data.username).execute()
 
-        if not response.data:
+        if not response["data"]:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Incorrect username or password"
             )
 
-        user = response.data[0]
+        user = response["data"][0]
 
         # Verify password
         if not verify_password(login_data.password, user["password_hash"]):
@@ -65,7 +65,7 @@ async def register(user_data: UserCreate, db=Depends(get_db)):
         # Check if username already exists
         existing = db.table("users").select("id").eq("username", user_data.username).execute()
 
-        if existing.data:
+        if existing["data"]:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Username already exists"
@@ -79,15 +79,15 @@ async def register(user_data: UserCreate, db=Depends(get_db)):
             "username": user_data.username,
             "password_hash": password_hash,
             "role": user_data.role.value
-        }).execute()
+        })
 
-        if not response.data:
+        if not response["data"]:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to create user"
             )
 
-        user = response.data[0]
+        user = response["data"][0]
 
         return UserResponse(
             id=user["id"],

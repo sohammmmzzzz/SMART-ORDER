@@ -20,7 +20,7 @@ async def get_menu_items(db=Depends(get_db)):
         items = []
         categories = set()
 
-        for item in response.data:
+        for item in response["data"]:
             items.append(MenuItem(
                 id=item["id"],
                 category=item["category"],
@@ -51,7 +51,7 @@ async def get_categories(db=Depends(get_db)):
     try:
         response = db.table("menu_items").select("category").execute()
 
-        categories = sorted(list(set([item["category"] for item in response.data])))
+        categories = sorted(list(set([item["category"] for item in response["data"]])))
 
         return {"categories": categories}
 
@@ -71,7 +71,7 @@ async def get_items_by_category(category: str, db=Depends(get_db)):
         response = db.table("menu_items").select("*").eq("category", category).eq("available", True).execute()
 
         items = []
-        for item in response.data:
+        for item in response["data"]:
             items.append(MenuItem(
                 id=item["id"],
                 category=item["category"],

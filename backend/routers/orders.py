@@ -34,15 +34,15 @@ async def create_order(
             "items": order_items,
             "location": order_data.location.value,
             "status": OrderStatus.PENDING.value
-        }).execute()
+        })
 
-        if not response.data:
+        if not response["data"]:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to create order"
             )
 
-        order = response.data[0]
+        order = response["data"][0]
 
         return OrderResponse(
             id=order["id"],
@@ -86,7 +86,7 @@ async def get_orders(
         response = query.order("created_at", desc=True).execute()
 
         orders = []
-        for order in response.data:
+        for order in response["data"]:
             orders.append(OrderResponse(
                 id=order["id"],
                 user_id=order["user_id"],
@@ -122,7 +122,7 @@ async def get_pending_orders(
         ).eq("status", OrderStatus.PENDING.value).order("created_at").execute()
 
         orders = []
-        for order in response.data:
+        for order in response["data"]:
             orders.append(OrderResponse(
                 id=order["id"],
                 user_id=order["user_id"],
@@ -165,17 +165,17 @@ async def update_order_status(
         # Update order
         response = db.table("orders").update(update_fields).eq("id", order_id).execute()
 
-        if not response.data:
+        if not response["data"]:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Order not found"
             )
 
-        order = response.data[0]
+        order = response["data"][0]
 
         # Fetch username
         user_response = db.table("users").select("username").eq("id", order["user_id"]).execute()
-        username = user_response.data[0]["username"] if user_response.data else None
+        username = user_response["data"][0]["username"] if user_response["data"] else None
 
         return OrderResponse(
             id=order["id"],
@@ -221,7 +221,7 @@ async def get_order_history(
         response = query.order("created_at", desc=True).range(offset, offset + limit - 1).execute()
 
         orders = []
-        for order in response.data:
+        for order in response["data"]:
             orders.append(OrderResponse(
                 id=order["id"],
                 user_id=order["user_id"],

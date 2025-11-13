@@ -29,7 +29,7 @@ async def get_analytics(
 
         # Fetch all orders
         response = query.execute()
-        orders = response.data
+        orders = response["data"]
 
         # Calculate statistics
         total_orders = len(orders)
@@ -120,7 +120,7 @@ async def get_all_orders(
         response = query.order("created_at", desc=True).range(offset, offset + limit - 1).execute()
 
         orders = []
-        for order in response.data:
+        for order in response["data"]:
             orders.append(OrderResponse(
                 id=order["id"],
                 user_id=order["user_id"],
@@ -154,7 +154,7 @@ async def get_all_users(
         response = db.table("users").select("id, username, role, created_at").execute()
 
         users = []
-        for user in response.data:
+        for user in response["data"]:
             users.append(UserResponse(
                 id=user["id"],
                 username=user["username"],
@@ -190,10 +190,10 @@ async def get_stats_summary(
         today_response = db.table("orders").select("id", count="exact").gte("created_at", today).execute()
 
         return {
-            "total_orders": orders_response.count or 0,
-            "total_users": users_response.count or 0,
-            "pending_orders": pending_response.count or 0,
-            "today_orders": today_response.count or 0
+            "total_orders": orders_response["count"] or 0,
+            "total_users": users_response["count"] or 0,
+            "pending_orders": pending_response["count"] or 0,
+            "today_orders": today_response["count"] or 0
         }
 
     except Exception as e:
