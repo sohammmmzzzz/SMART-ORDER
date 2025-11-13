@@ -26,7 +26,6 @@ import {
   CheckCircle2,
   History,
   Coffee,
-  Sparkles,
 } from "lucide-react"
 import { formatDate } from "@/lib/utils"
 
@@ -42,13 +41,6 @@ interface Order {
   updated_at: string
 }
 
-// Kitchen/pantry themed Unsplash backgrounds
-const BACKGROUND_IMAGES = [
-  "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=1920&q=80", // Kitchen
-  "https://images.unsplash.com/photo-1556909172-54557c7e4fb7?w=1920&q=80", // Modern kitchen
-  "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1920&q=80", // Organized pantry
-]
-
 export default function PantryDashboard() {
   const router = useRouter()
   const { user, isAuthenticated, logout } = useAuthStore()
@@ -58,19 +50,8 @@ export default function PantryDashboard() {
   const [showHistory, setShowHistory] = useState(false)
   const [orderHistory, setOrderHistory] = useState<Order[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [bgIndex, setBgIndex] = useState(0)
-  const [dragDirection, setDragDirection] = useState<"left" | "right" | null>(null)
-
-  // Change background every 8 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setBgIndex((prev) => (prev + 1) % BACKGROUND_IMAGES.length)
-    }, 8000)
-    return () => clearInterval(interval)
-  }, [])
 
   useEffect(() => {
-    // Check authentication
     if (!isAuthenticated || (user?.role !== "pantry" && user?.role !== "admin")) {
       router.push("/login")
       return
@@ -78,7 +59,6 @@ export default function PantryDashboard() {
 
     fetchOrders()
 
-    // Poll for updates every 5 seconds
     const interval = setInterval(fetchOrders, 5000)
     return () => clearInterval(interval)
   }, [isAuthenticated, user, router])
@@ -111,7 +91,6 @@ export default function PantryDashboard() {
     try {
       await api.updateOrderStatus(currentOrder.id, "completed")
 
-      // Remove from list
       setOrders((prev) => prev.filter((_, idx) => idx !== currentIndex))
       setCurrentIndex((prev) => Math.max(0, Math.min(prev, orders.length - 2)))
     } catch (error) {
@@ -122,32 +101,13 @@ export default function PantryDashboard() {
 
   const handlePrevious = () => {
     if (currentIndex > 0) {
-      setDragDirection("right")
-      setTimeout(() => {
-        setCurrentIndex((prev) => prev - 1)
-        setDragDirection(null)
-      }, 300)
+      setCurrentIndex((prev) => prev - 1)
     }
   }
 
   const handleNext = () => {
     if (currentIndex < orders.length - 1) {
-      setDragDirection("left")
-      setTimeout(() => {
-        setCurrentIndex((prev) => prev + 1)
-        setDragDirection(null)
-      }, 300)
-    }
-  }
-
-  const handleDragEnd = (event: any, info: PanInfo) => {
-    const swipeThreshold = 100
-    if (Math.abs(info.offset.x) > swipeThreshold) {
-      if (info.offset.x < 0 && currentIndex < orders.length - 1) {
-        handleNext()
-      } else if (info.offset.x > 0 && currentIndex > 0) {
-        handlePrevious()
-      }
+      setCurrentIndex((prev) => prev + 1)
     }
   }
 
@@ -165,168 +125,62 @@ export default function PantryDashboard() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen relative overflow-hidden flex items-center justify-center">
-        {/* Background */}
-        <div className="fixed inset-0 bg-gradient-to-br from-green-900/90 via-blue-900/80 to-purple-900/90 z-0" />
-
-        {/* Loading animation */}
-        <motion.div
-          className="relative z-10 text-center"
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-        >
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-          >
-            <Coffee className="w-16 h-16 text-white mx-auto mb-4" />
-          </motion.div>
-          <motion.p
-            className="text-xl text-white font-medium"
-            animate={{ opacity: [0.5, 1, 0.5] }}
-            transition={{ duration: 2, repeat: Infinity }}
-          >
-            Loading orders...
-          </motion.p>
-        </motion.div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <Coffee className="w-12 h-12 text-gray-400 mx-auto mb-4 animate-pulse" />
+          <p className="text-lg text-gray-600">Loading orders...</p>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen relative overflow-hidden">
-      {/* Animated Background */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={bgIndex}
-          initial={{ opacity: 0, scale: 1.1 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 1.5, ease: "easeInOut" }}
-          className="fixed inset-0 z-0"
-          style={{
-            backgroundImage: `url('${BACKGROUND_IMAGES[bgIndex]}')`,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-          }}
-        />
-      </AnimatePresence>
-
-      {/* Gradient Overlay */}
-      <div className="fixed inset-0 bg-gradient-to-br from-green-900/85 via-blue-900/75 to-purple-900/85 z-10" />
-
-      {/* Floating Particles */}
-      <div className="fixed inset-0 z-10 pointer-events-none">
-        {[...Array(12)].map((_, i) => (
-          <motion.div
-            key={i}
-            className="absolute w-2 h-2 bg-white/20 rounded-full"
-            initial={{
-              x: Math.random() * (typeof window !== "undefined" ? window.innerWidth : 1000),
-              y: Math.random() * (typeof window !== "undefined" ? window.innerHeight : 1000),
-            }}
-            animate={{
-              y: [null, Math.random() * (typeof window !== "undefined" ? window.innerHeight : 1000)],
-              x: [null, Math.random() * (typeof window !== "undefined" ? window.innerWidth : 1000)],
-            }}
-            transition={{
-              duration: Math.random() * 15 + 10,
-              repeat: Infinity,
-              repeatType: "reverse",
-              ease: "linear",
-            }}
-          />
-        ))}
-      </div>
-
-      {/* Header with Glass Morphism */}
-      <motion.header
-        initial={{ y: -100, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.6, ease: "easeOut" }}
-        className="relative z-20 glass border-b border-white/20"
-      >
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex justify-between items-center">
-            <motion.div
-              className="flex items-center gap-3"
-              whileHover={{ scale: 1.02 }}
-            >
-              <Coffee className="w-8 h-8 text-white" />
-              <div>
-                <h1 className="text-2xl font-bold text-white">Pantry Dashboard</h1>
-                <p className="text-sm text-white/80 flex items-center gap-1">
-                  <Sparkles className="w-3 h-3" />
-                  Welcome, {user?.username}
-                </p>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gray-900 rounded-lg flex items-center justify-center">
+                <Coffee className="w-5 h-5 text-white" />
               </div>
-            </motion.div>
-            <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setShowMenu(!showMenu)}
-                className="glass border-white/20 text-white hover:bg-white/20"
-                title="Menu"
-              >
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </motion.div>
+              <div>
+                <h1 className="text-lg font-semibold text-gray-900">Pantry Dashboard</h1>
+                <p className="text-sm text-gray-600">Welcome, {user?.username}</p>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setShowMenu(!showMenu)}
+              className="border-gray-300 hover:bg-gray-50"
+              title="Menu"
+            >
+              <MoreVertical className="h-4 w-4" />
+            </Button>
           </div>
         </div>
-      </motion.header>
+      </header>
 
       {/* Main content */}
-      <main className="relative z-20 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <AnimatePresence mode="wait">
           {orders.length === 0 ? (
             <motion.div
               key="empty"
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
               className="text-center py-20"
             >
-              <motion.div
-                className="glass p-12 rounded-3xl border border-white/20 shadow-2xl inline-block"
-                animate={{
-                  y: [0, -10, 0],
-                }}
-                transition={{
-                  duration: 3,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                }}
-              >
-                <motion.div
-                  animate={{
-                    scale: [1, 1.1, 1],
-                    rotate: [0, 5, -5, 0],
-                  }}
-                  transition={{
-                    duration: 4,
-                    repeat: Infinity,
-                  }}
-                >
-                  <Package className="h-24 w-24 mx-auto text-white/70 mb-4" />
-                </motion.div>
-                <h2 className="text-3xl font-bold text-white mb-3">No Pending Orders</h2>
-                <p className="text-white/80 text-lg">
+              <div className="bg-white p-12 rounded-lg border border-gray-200 shadow-sm inline-block">
+                <Package className="h-16 w-16 mx-auto text-gray-400 mb-4" />
+                <h2 className="text-2xl font-semibold text-gray-900 mb-2">No Pending Orders</h2>
+                <p className="text-gray-600">
                   All orders have been completed. Great job!
                 </p>
-                <motion.div
-                  className="mt-6"
-                  animate={{
-                    scale: [1, 1.2, 1],
-                  }}
-                  transition={{
-                    duration: 2,
-                    repeat: Infinity,
-                  }}
-                >
-                  <CheckCircle2 className="h-12 w-12 mx-auto text-green-400" />
-                </motion.div>
-              </motion.div>
+                <CheckCircle2 className="h-10 w-10 mx-auto text-green-600 mt-6" />
+              </div>
             </motion.div>
           ) : (
             <motion.div
@@ -337,146 +191,98 @@ export default function PantryDashboard() {
               className="space-y-6"
             >
               {/* Order counter */}
-              <motion.div
-                className="text-center glass p-4 rounded-2xl border border-white/20 inline-block mx-auto"
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-              >
-                <p className="text-lg font-bold text-white">
+              <div className="text-center bg-white p-4 rounded-lg border border-gray-200 inline-block">
+                <p className="text-base font-semibold text-gray-900">
                   Order {currentIndex + 1} of {orders.length}
                 </p>
                 {orders.length > 1 && (
-                  <p className="text-sm text-white/70">
+                  <p className="text-sm text-gray-600 mt-1">
                     {orders.length - 1} more order(s) in queue
                   </p>
                 )}
-              </motion.div>
+              </div>
 
-              {/* Order card with swipe gesture */}
+              {/* Order card */}
               <AnimatePresence mode="wait">
                 <motion.div
                   key={currentOrder?.id}
-                  initial={{ opacity: 0, x: dragDirection === "left" ? 100 : dragDirection === "right" ? -100 : 0, scale: 0.9 }}
-                  animate={{ opacity: 1, x: 0, scale: 1 }}
-                  exit={{ opacity: 0, x: dragDirection === "left" ? -100 : dragDirection === "right" ? 100 : 0, scale: 0.9 }}
-                  transition={{ duration: 0.3, ease: "easeInOut" }}
-                  drag="x"
-                  dragConstraints={{ left: 0, right: 0 }}
-                  onDragEnd={handleDragEnd}
-                  whileHover={{ scale: 1.02 }}
-                  className="touch-pan-y"
+                  initial={{ opacity: 0, x: 50 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -50 }}
+                  transition={{ duration: 0.2 }}
                 >
-                  <Card className="glass border-white/20 shadow-2xl overflow-hidden">
-                    {/* Shimmer effect */}
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-shimmer" />
-
-                    <CardContent className="p-6 space-y-4 relative">
+                  <Card className="bg-white border border-gray-200 shadow-sm">
+                    <CardContent className="p-6 space-y-4">
                       {/* Header */}
                       <div className="flex justify-between items-start">
                         <div>
-                          <motion.h2
-                            className="text-2xl font-bold text-white mb-1"
-                            initial={{ opacity: 0, x: -20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                          >
+                          <h2 className="text-xl font-semibold text-gray-900 mb-1">
                             Order #{currentOrder?.id.slice(0, 8)}
-                          </motion.h2>
-                          <p className="text-sm text-white/70">
+                          </h2>
+                          <p className="text-sm text-gray-600">
                             Placed {currentOrder && formatDate(currentOrder.created_at)}
                           </p>
                         </div>
-                        <motion.div
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          className="glass bg-yellow-500/20 border border-yellow-500/30 text-yellow-200 px-4 py-2 rounded-full text-sm font-bold flex items-center gap-2"
-                        >
-                          <motion.div
-                            animate={{ scale: [1, 1.3, 1] }}
-                            transition={{ duration: 2, repeat: Infinity }}
-                            className="w-2 h-2 bg-yellow-400 rounded-full"
-                          />
+                        <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-3 py-1 rounded-lg text-sm font-medium flex items-center gap-2">
+                          <div className="w-2 h-2 bg-yellow-500 rounded-full" />
                           Pending
-                        </motion.div>
+                        </div>
                       </div>
 
                       {/* Customer info */}
-                      <motion.div
-                        className="glass p-4 rounded-xl border border-white/20 space-y-3"
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.1 }}
-                      >
-                        <div className="flex items-center gap-3 text-white">
-                          <User className="h-5 w-5 text-blue-300" />
+                      <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 space-y-3">
+                        <div className="flex items-center gap-3 text-gray-700">
+                          <User className="h-4 w-4 text-gray-500" />
                           <span className="font-medium">{currentOrder?.username || "Unknown User"}</span>
                         </div>
 
-                        <div className="flex items-center gap-3 text-white">
-                          <MapPin className="h-5 w-5 text-green-300" />
+                        <div className="flex items-center gap-3 text-gray-700">
+                          <MapPin className="h-4 w-4 text-gray-500" />
                           <span>{currentOrder?.location}</span>
                         </div>
 
-                        <div className="flex items-center gap-3 text-white">
-                          <Clock className="h-5 w-5 text-purple-300" />
+                        <div className="flex items-center gap-3 text-gray-700">
+                          <Clock className="h-4 w-4 text-gray-500" />
                           <span>
                             {currentOrder &&
                               new Date(currentOrder.created_at).toLocaleTimeString()}
                           </span>
                         </div>
-                      </motion.div>
+                      </div>
 
                       {/* Items */}
-                      <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.2 }}
-                      >
-                        <h3 className="font-semibold mb-3 text-lg text-white flex items-center gap-2">
-                          <Package className="w-5 h-5" />
+                      <div>
+                        <h3 className="font-medium mb-3 text-gray-900 flex items-center gap-2">
+                          <Package className="w-4 h-4" />
                           Order Items:
                         </h3>
                         <div className="space-y-2">
                           {currentOrder?.items.map((item: any, idx: number) => (
-                            <motion.div
+                            <div
                               key={idx}
-                              initial={{ opacity: 0, x: -20 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              transition={{ delay: 0.3 + idx * 0.1 }}
-                              className="glass p-4 rounded-xl border border-white/20 flex justify-between items-center"
-                              whileHover={{ scale: 1.02, x: 5 }}
+                              className="bg-gray-50 p-4 rounded-lg border border-gray-200 flex justify-between items-center"
                             >
                               <div>
-                                <p className="font-medium text-white">{item.name}</p>
-                                <p className="text-sm text-white/70">{item.category}</p>
+                                <p className="font-medium text-gray-900">{item.name}</p>
+                                <p className="text-sm text-gray-600">{item.category}</p>
                               </div>
-                              <motion.div
-                                className="text-xl font-bold text-white bg-white/10 px-4 py-2 rounded-full"
-                                whileHover={{ scale: 1.1 }}
-                              >
+                              <div className="text-lg font-semibold text-gray-900 bg-gray-200 px-3 py-1 rounded-lg">
                                 x{item.quantity}
-                              </motion.div>
-                            </motion.div>
+                              </div>
+                            </div>
                           ))}
                         </div>
-                      </motion.div>
+                      </div>
 
                       {/* Complete button */}
-                      <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.5 }}
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
+                      <Button
+                        onClick={handleCompleteOrder}
+                        className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-6 flex items-center justify-center gap-2"
+                        size="lg"
                       >
-                        <Button
-                          onClick={handleCompleteOrder}
-                          className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-6 text-lg ripple flex items-center justify-center gap-2"
-                          size="lg"
-                        >
-                          <CheckCircle2 className="w-5 h-5" />
-                          Mark as Complete
-                        </Button>
-                      </motion.div>
+                        <CheckCircle2 className="w-5 h-5" />
+                        Mark as Complete
+                      </Button>
                     </CardContent>
                   </Card>
                 </motion.div>
@@ -484,41 +290,26 @@ export default function PantryDashboard() {
 
               {/* Navigation */}
               {orders.length > 1 && (
-                <motion.div
-                  className="flex justify-center gap-4"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.6 }}
-                >
-                  <motion.div
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
+                <div className="flex justify-center gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={handlePrevious}
+                    disabled={currentIndex === 0}
+                    className="border-gray-300 hover:bg-gray-50 disabled:opacity-50"
                   >
-                    <Button
-                      variant="outline"
-                      onClick={handlePrevious}
-                      disabled={currentIndex === 0}
-                      className="glass border-white/20 text-white hover:bg-white/20 disabled:opacity-30"
-                    >
-                      <ChevronLeft className="h-4 w-4 mr-1" />
-                      Previous
-                    </Button>
-                  </motion.div>
-                  <motion.div
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
+                    <ChevronLeft className="h-4 w-4 mr-1" />
+                    Previous
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={handleNext}
+                    disabled={currentIndex === orders.length - 1}
+                    className="border-gray-300 hover:bg-gray-50 disabled:opacity-50"
                   >
-                    <Button
-                      variant="outline"
-                      onClick={handleNext}
-                      disabled={currentIndex === orders.length - 1}
-                      className="glass border-white/20 text-white hover:bg-white/20 disabled:opacity-30"
-                    >
-                      Next
-                      <ChevronRight className="h-4 w-4 ml-1" />
-                    </Button>
-                  </motion.div>
-                </motion.div>
+                    Next
+                    <ChevronRight className="h-4 w-4 ml-1" />
+                  </Button>
+                </div>
               )}
             </motion.div>
           )}
@@ -526,128 +317,84 @@ export default function PantryDashboard() {
       </main>
 
       {/* Menu dialog */}
-      <AnimatePresence>
-        {showMenu && (
-          <Dialog open={showMenu} onOpenChange={setShowMenu}>
-            <DialogContent className="glass border-white/20 text-white">
-              <motion.div
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.9, opacity: 0 }}
-              >
-                <DialogHeader>
-                  <DialogTitle className="text-white text-2xl">Menu</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-3 mt-4">
-                  <motion.div
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <Button
-                      variant="outline"
-                      onClick={handleShowHistory}
-                      className="w-full glass border-white/20 text-white hover:bg-white/20 flex items-center gap-2"
-                    >
-                      <History className="w-4 h-4" />
-                      View Order History
-                    </Button>
-                  </motion.div>
-                  <motion.div
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <Button
-                      variant="outline"
-                      onClick={handleLogout}
-                      className="w-full glass border-white/20 text-white hover:bg-white/20 flex items-center gap-2"
-                    >
-                      <LogOut className="h-4 w-4" />
-                      Logout
-                    </Button>
-                  </motion.div>
-                </div>
-              </motion.div>
-            </DialogContent>
-          </Dialog>
-        )}
-      </AnimatePresence>
+      <Dialog open={showMenu} onOpenChange={setShowMenu}>
+        <DialogContent className="bg-white">
+          <DialogHeader>
+            <DialogTitle className="text-gray-900">Menu</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 mt-4">
+            <Button
+              variant="outline"
+              onClick={handleShowHistory}
+              className="w-full border-gray-300 hover:bg-gray-50 flex items-center gap-2"
+            >
+              <History className="w-4 h-4" />
+              View Order History
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleLogout}
+              className="w-full border-gray-300 hover:bg-gray-50 flex items-center gap-2"
+            >
+              <LogOut className="h-4 w-4" />
+              Logout
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* History dialog */}
-      <AnimatePresence>
-        {showHistory && (
-          <Dialog open={showHistory} onOpenChange={setShowHistory}>
-            <DialogContent className="glass border-white/20 text-white max-w-2xl max-h-[80vh] overflow-y-auto">
-              <motion.div
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.9, opacity: 0 }}
-              >
-                <DialogHeader>
-                  <DialogTitle className="text-white text-2xl flex items-center gap-2">
-                    <History className="w-6 h-6" />
-                    Order History
-                  </DialogTitle>
-                  <DialogDescription className="text-white/70">
-                    Recently completed orders
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-3 mt-4">
-                  {orderHistory.length === 0 ? (
-                    <motion.p
-                      className="text-center text-white/70 py-8"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                    >
-                      No order history
-                    </motion.p>
-                  ) : (
-                    <AnimatePresence>
-                      {orderHistory.map((order, index) => (
-                        <motion.div
-                          key={order.id}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: index * 0.05 }}
-                          whileHover={{ scale: 1.02 }}
+      <Dialog open={showHistory} onOpenChange={setShowHistory}>
+        <DialogContent className="bg-white max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-gray-900 flex items-center gap-2">
+              <History className="w-5 h-5" />
+              Order History
+            </DialogTitle>
+            <DialogDescription className="text-gray-600">
+              Recently completed orders
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 mt-4">
+            {orderHistory.length === 0 ? (
+              <p className="text-center text-gray-600 py-8">
+                No order history
+              </p>
+            ) : (
+              orderHistory.map((order) => (
+                <Card key={order.id} className="bg-gray-50 border border-gray-200">
+                  <CardContent className="py-4">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="font-medium text-gray-900">Order #{order.id.slice(0, 8)}</p>
+                        <p className="text-sm text-gray-600">{order.username}</p>
+                        <p className="text-sm text-gray-600 flex items-center gap-1">
+                          <MapPin className="w-3 h-3" />
+                          {order.location}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <div
+                          className={`px-3 py-1 rounded-lg text-xs font-medium ${
+                            order.status === "completed"
+                              ? "bg-green-100 text-green-700 border border-green-200"
+                              : "bg-red-100 text-red-700 border border-red-200"
+                          }`}
                         >
-                          <Card className="glass border-white/20">
-                            <CardContent className="py-4">
-                              <div className="flex justify-between items-start">
-                                <div>
-                                  <p className="font-medium text-white">Order #{order.id.slice(0, 8)}</p>
-                                  <p className="text-sm text-white/70">{order.username}</p>
-                                  <p className="text-sm text-white/70 flex items-center gap-1">
-                                    <MapPin className="w-3 h-3" />
-                                    {order.location}
-                                  </p>
-                                </div>
-                                <div className="text-right">
-                                  <div
-                                    className={`px-3 py-1 rounded-full text-xs font-medium ${
-                                      order.status === "completed"
-                                        ? "bg-green-500/20 text-green-300 border border-green-500/30"
-                                        : "bg-red-500/20 text-red-300 border border-red-500/30"
-                                    }`}
-                                  >
-                                    {order.status}
-                                  </div>
-                                  <p className="text-xs text-white/60 mt-2">
-                                    {formatDate(order.created_at)}
-                                  </p>
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        </motion.div>
-                      ))}
-                    </AnimatePresence>
-                  )}
-                </div>
-              </motion.div>
-            </DialogContent>
-          </Dialog>
-        )}
-      </AnimatePresence>
+                          {order.status}
+                        </div>
+                        <p className="text-xs text-gray-500 mt-2">
+                          {formatDate(order.created_at)}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
